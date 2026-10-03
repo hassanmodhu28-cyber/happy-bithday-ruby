@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>For Ruby — a grand celebration</title>
+<meta name="description" content="A baroque birthday gala in ink, gold and gunpowder.">
+<style>
+/* ============================================================
+   FOUNDATION
+============================================================ */
+:root{
+  --ink:#0f0c1d;
+  --parchment:#efe4cd;
+  --body-txt:#e7dcc4;
+  --gold:#d9a441;
+  --gold-hi:#f4d581;
+  --gold-dk:#8a5f22;
+  --verm:#d0452f;
+  --teal:#2e8f83;
+  --rose:#d97b8f;
+  --crim:#a3271f;
+  --serif:'Iowan Old Style','Palatino Linotype',Palatino,Georgia,'Times New Roman',serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none !important}
+html{scroll-behavior:smooth;background:var(--ink)}
+body{
+  font-family:var(--serif);
+  color:var(--body-txt);
+  background:
+    radial-gradient(130% 75% at 50% 0%, #211845 0%, #130f28 46%, var(--ink) 100%) fixed,
+    var(--ink);
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+::selection{background:rgba(217,164,65,.35);color:#fff}
+::-webkit-scrollbar{width:10px}
+::-webkit-scrollbar-track{background:#0c0918}
+::-webkit-scrollbar-thumb{background:#3a2c14;border-radius:5px}
+::-webkit-scrollbar-thumb:hover{background:var(--gold-dk)}
+:focus-visible{outline:1px solid var(--gold);outline-offset:3px}
+button{font-family:inherit;cursor:pointer}
+
+/* ============================================================
+   LAYERS: canvas / stage / vignette / grain
+============================================================ */
+#fx{position:fixed;inset:0;z-index:0;pointer-events:none;transition:opacity 1.2s ease}
+#fx.front{z-index:60}
+body.deep #fx{opacity:.42}
+#stage{position:relative;z-index:1}
+#vignette{position:fixed;inset:0;z-index:70;pointer-events:none;
+  background:radial-gradient(120% 92% at 50% 38%, transparent 52%, rgba(4,3,10,.62) 100%)}
+#grain{position:fixed;inset:0;z-index:71;pointer-events:none;opacity:.05;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+/* ============================================================
+   HERO — the framed night sky
+============================================================ */
+#hero{position:relative;min-height:100vh;min-height:100svh;display:grid;place-items:center;
+  text-align:center;overflow:hidden;padding:clamp(4rem,9vh,5.5rem) 1.2rem;cursor:pointer}
+#blobs{position:absolute;inset:0;width:100%;height:100%;mix-blend-mode:screen;pointer-events:none}
+#glow{position:absolute;left:50%;top:42%;width:min(92vmin,720px);aspect-ratio:1;
+  transform:translate(-50%,-50%);pointer-events:none;
+  background:radial-gradient(circle, rgba(244,213,129,.14), rgba(244,213,129,.045) 45%, transparent 70%);
+  animation:flicker 4.2s ease-in-out infinite}
+@keyframes flicker{
+  0%,100%{opacity:.85;transform:translate(-50%,-50%) scale(1)}
+  30%{opacity:1;transform:translate(-50%,-50%) scale(1.035)}
+  55%{opacity:.72;transform:translate(-50%,-50%) scale(.985)}
+  76%{opacity:.95;transform:translate(-50%,-50%) scale(1.015)}}
+
+.frame{position:absolute;inset:clamp(10px,2vmin,18px);border:1px solid rgba(217,164,65,.5);
+  pointer-events:none;opacity:0;animation:frameIn 1.6s ease .15s forwards}
+.frame::before{content:"";position:absolute;inset:5px;border:1px solid rgba(217,164,65,.22)}
+@keyframes frameIn{to{opacity:1}}
+.corner{position:absolute;width:clamp(42px,7.5vmin,66px);height:auto;color:var(--gold);
+  opacity:0;animation:frameIn 1.4s ease .35s forwards}
+.corner.tl{top:-1px;left:-1px}
+.corner.tr{top:-1px;right:-1px;transform:scaleX(-1)}
+.corner.bl{bottom:-1px;left:-1px;transform:scaleY(-1)}
+.corner.br{bottom:-1px;right:-1px;transform:scale(-1)}
+
+#heroPar{position:relative;z-index:2;display:flex;flex-direction:column;
+  align-items:center;gap:clamp(.9rem,2.6vh,1.5rem);will-change:transform,opacity}
+.over{font-size:clamp(.64rem,1.6vw,.8rem);letter-spacing:.42em;text-indent:.42em;
+  text-transform:uppercase;font-weight:400;color:var(--gold)}
+
+.display{position:relative;font-style:italic;font-weight:400;line-height:.95;
+  font-size:clamp(4rem,17vw,10rem);margin:.04em 0 .02em;padding-right:.08em;
+  background:linear-gradient(168deg,#f8e7b0 8%,#e9c26a 38%,#a06a24 55%,#f4d581 78%,#d9a441 100%);
+  -webkit-background-clip:text;background-clip:text;
+  color:#e9c26a;-webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 3px 18px rgba(0,0,0,.55))}
+.display::before,.display::after{content:attr(data-text);position:absolute;inset:0;
+  opacity:0;pointer-events:none;background:none}
+.display::before{z-index:-1;-webkit-text-fill-color:rgba(208,69,47,.85);color:rgba(208,69,47,.85)}
+.display::after{z-index:-2;-webkit-text-fill-color:rgba(46,143,131,.85);color:rgba(46,143,131,.85)}
+.display.glitch{animation:jit .2s steps(2,end) both}
+.display.glitch::before{opacity:1;animation:gl1 .18s steps(2,end) both}
+.display.glitch::after{opacity:1;animation:gl2 .18s steps(2,end) both}
+@keyframes gl1{0%{transform:translate(-5px,2px);clip-path:inset(10% 0 58% 0)}
+  50%{transform:translate(4px,-2px);clip-path:inset(52% 0 16% 0)}
+  100%{transform:translate(-2px,1px);clip-path:inset(28% 0 44% 0)}}
+@keyframes gl2{0%{transform:translate(5px,-1px);clip-path:inset(44% 0 22% 0)}
+  50%{transform:translate(-4px,2px);clip-path:inset(6% 0 70% 0)}
+  100%{transform:translate(2px,-2px);clip-path:inset(64% 0 8% 0)}}
+@keyframes jit{50%{transform:translateX(2px) skewX(-.6deg)}}
+
+.emblem{width:clamp(250px,38vw,320px);margin-top:.3rem;color:var(--gold)}
+.emblem svg{display:block;width:100%;height:auto;overflow:visible}
+
+/* The gilded banner — drawn inside the laurel SVG, so it always
+   sits perfectly centered in the wreath at every screen size. */
+.banner{opacity:0;animation:leafIn .9s ease 1.7s forwards;
+  filter:drop-shadow(0 3px 5px rgba(0,0,0,.45))}
+.rb-txt{font-family:var(--serif);font-weight:600;font-size:11px;
+  letter-spacing:1.8px;fill:#33200a}
+.leaf{opacity:0;animation:leafIn .7s ease forwards}
+@keyframes leafIn{from{opacity:0}to{opacity:1}}
+
+.hEnter{opacity:0;animation:rise 1.15s cubic-bezier(.2,.7,.2,1) forwards}
+@keyframes rise{from{opacity:0;transform:translateY(26px);filter:blur(6px)}
+  to{opacity:1;transform:none;filter:none}}
+
+.cue{position:absolute;bottom:clamp(1.4rem,4vh,2.4rem);left:50%;transform:translateX(-50%);
+  display:flex;flex-direction:column;align-items:center;gap:.55rem;
+  color:rgba(239,228,205,.6);text-decoration:none;z-index:2}
+.cue span{font-size:.62rem;letter-spacing:.4em;text-indent:.4em;text-transform:uppercase}
+.cue .line{width:1px;height:44px;position:relative;overflow:hidden;
+  background:linear-gradient(var(--gold),transparent)}
+.cue .line::after{content:"";position:absolute;inset:0;background:var(--gold-hi);
+  transform:translateY(-100%);animation:cueDrop 2.2s ease-in-out infinite}
+@keyframes cueDrop{60%,100%{transform:translateY(100%)}}
+.skyHint{position:absolute;right:clamp(1.4rem,4vw,2.6rem);bottom:clamp(1.6rem,4vh,2.6rem);
+  font-style:italic;font-size:.8rem;color:rgba(239,228,205,.48);z-index:2}
+
+/* ============================================================
+   THE LETTER
+============================================================ */
+#letter{position:relative;z-index:2;max-width:41rem;margin:0 auto;
+  padding:clamp(4rem,12vh,8rem) clamp(1.3rem,5vw,2rem) 3rem}
+.letterHead{text-align:center;margin-bottom:clamp(3.5rem,9vh,6rem)}
+.letterHead .over{color:rgba(217,164,65,.85);margin-bottom:1.1rem}
+.letterHead h2{font-style:italic;font-weight:400;color:var(--parchment);
+  font-size:clamp(2rem,5vw,3rem)}
+.letterHead .it{color:var(--gold-hi)}
+.hr{width:76px;height:1px;margin:1.15rem auto;
+  background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+
+.para{position:relative;margin-bottom:clamp(2.4rem,7vh,4.2rem)}
+.para p{font-size:clamp(1.02rem,.95rem + .35vw,1.22rem);line-height:1.9;
+  text-wrap:pretty;text-shadow:0 1px 8px rgba(10,7,20,.6)}
+.num{font-size:.78rem;letter-spacing:.28em;color:rgba(217,164,65,.8);margin-bottom:.55rem;display:block}
+.para.first p::first-letter{float:left;padding:.06em .14em 0 0;
+  font-size:3.3em;line-height:.78;color:var(--gold-hi)}
+.para.pull,.para.closing{text-align:center}
+.para.pull .num,.para.closing .num{display:none}
+.para.pull p{font-style:italic;color:var(--gold-hi);text-wrap:balance;
+  font-size:clamp(1.45rem,1rem + 2vw,2.3rem);line-height:1.5}
+.para.closing p{font-style:italic;color:var(--parchment);text-wrap:balance;
+  font-size:clamp(1.25rem,1rem + 1.2vw,1.7rem);line-height:1.7}
+
+.flourish{display:block;width:min(210px,62%);margin:0 auto clamp(2.6rem,7vh,4rem);
+  color:var(--gold);opacity:.8}
+
+/* Wax seal */
+.sealWrap{text-align:center;margin:clamp(3.5rem,11vh,6.5rem) auto 0}
+.sealHint{font-size:.98rem;font-style:italic;color:rgba(239,228,205,.75);
+  line-height:1.8;margin-bottom:2rem}
+#seal{background:none;border:0;padding:0;width:clamp(112px,20vw,142px);
+  filter:drop-shadow(0 10px 24px rgba(0,0,0,.5));
+  transition:transform .35s cubic-bezier(.2,.8,.3,1),opacity .4s}
+#seal:hover{transform:scale(.96) rotate(-3deg)}
+#seal:active{transform:scale(.9)}
+#seal.broken{transform:scale(.82) rotate(-6deg);opacity:.3;pointer-events:none}
+#seal.broken svg{animation:none}
+#seal svg{display:block;width:100%;height:auto;animation:sealBreath 4s ease-in-out infinite}
+@keyframes sealBreath{50%{transform:scale(1.03) rotate(1.4deg)}}
+.sealWarn{margin-top:1.5rem;font-size:.64rem;letter-spacing:.3em;text-indent:.3em;
+  text-transform:uppercase;color:rgba(217,164,65,.55)}
+
+/* Aftermath */
+#aftermath{text-align:center;padding:clamp(3rem,9vh,6rem) 1.4rem 2rem;
+  max-width:44rem;margin:0 auto;position:relative;z-index:2}
+.after-line{font-style:italic;color:var(--parchment);
+  font-size:clamp(1.5rem,1rem + 2vw,2.2rem);line-height:1.5}
+.after-line em{color:var(--gold-hi);font-style:inherit}
+.after-sub{margin-top:1.1rem;color:rgba(239,228,205,.66);font-size:.98rem;font-style:italic}
+.btns{margin-top:2.6rem;display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}
+.btn{font-size:.76rem;letter-spacing:.26em;text-indent:.26em;text-transform:uppercase;
+  color:var(--gold-hi);background:rgba(217,164,65,.05);
+  border:1px solid rgba(217,164,65,.55);padding:.95em 1.9em;transition:.3s}
+.btn:hover{background:rgba(217,164,65,.14);border-color:var(--gold-hi);transform:translateY(-2px)}
+.btn.ghost{border-color:rgba(239,228,205,.25);color:rgba(239,228,205,.7);
+  text-transform:none;letter-spacing:.04em;text-indent:0;font-style:italic;font-size:.9rem}
+.btn.ghost:hover{border-color:rgba(239,228,205,.6);color:var(--parchment)}
+
+footer{position:relative;z-index:2;text-align:center;padding:3rem 1rem 3.8rem;
+  color:rgba(239,228,205,.42);font-size:.82rem;font-style:italic}
+footer .flourish{margin-bottom:1.4rem;opacity:.5}
+
+/* Scroll reveals */
+.reveal{opacity:0;transform:translateY(28px);filter:blur(5px);
+  transition:opacity 1s cubic-bezier(.2,.7,.2,1),transform 1s cubic-bezier(.2,.7,.2,1),filter 1s}
+.reveal.in{opacity:1;transform:none;filter:none}
+
+/* ============================================================
+   THE JUMP SCARE
+============================================================ */
+body.shake #stage,body.shake #fx{animation:shake .6s linear both}
+@keyframes shake{
+  10%{transform:translate(-10px,6px)}20%{transform:translate(9px,-8px)}
+  30%{transform:translate(-12px,-4px)}40%{transform:translate(10px,7px)}
+  50%{transform:translate(-7px,5px)}60%{transform:translate(6px,-5px)}
+  70%{transform:translate(-4px,3px)}80%{transform:translate(3px,-2px)}
+  90%{transform:translate(-2px,1px)}}
+#scare{position:fixed;inset:0;z-index:100;display:grid;place-items:center;overflow:hidden;
+  background:radial-gradient(60% 50% at 50% 45%, #1c090c, #050308 72%)}
+#scare .flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+#scare.go .flash{animation:flashOut .45s ease-out both}
+@keyframes flashOut{from{opacity:1}to{opacity:0}}
+#scare.out{animation:scareFade .45s ease both}
+@keyframes scareFade{to{opacity:0}}
+.scare-inner{display:flex;flex-direction:column;align-items:center;gap:6vh}
+.mask{width:min(52vmin,320px);height:auto;
+  filter:drop-shadow(0 0 26px rgba(179,40,30,.5)) drop-shadow(0 0 64px rgba(179,40,30,.25));
+  animation:slam .5s cubic-bezier(.2,1,.3,1) both}
+@keyframes slam{from{transform:scale(2.8) rotate(6deg);opacity:0}
+  60%{opacity:1}to{transform:scale(1) rotate(-2deg);opacity:1}}
+.scare-text{font-weight:700;white-space:nowrap;color:#f2e8d5;
+  font-size:clamp(2.1rem,10vw,6.5rem);letter-spacing:.02em;
+  animation:slamT .38s .1s cubic-bezier(.2,1,.3,1) both}
+@keyframes slamT{from{transform:scale(2.2);opacity:0}}
+.jitter{display:inline-block;text-shadow:5px 0 rgba(208,69,47,.85),-5px 0 rgba(46,143,131,.85)}
+.jitter.alt{text-shadow:-5px 0 rgba(208,69,47,.85),5px 0 rgba(46,143,131,.85)}
+
+/* ============================================================
+   MOTION PREFERENCES / SMALL SCREENS
+============================================================ */
+@media (prefers-reduced-motion: reduce){
+  .hEnter,.leaf,.banner,.frame,.corner,.cue .line::after,#glow,#seal svg,
+  .display.glitch,.display.glitch::before,.display.glitch::after{animation:none !important;opacity:1}
+  .reveal{transition:none;opacity:1;transform:none;filter:none}
+  body.shake #stage,body.shake #fx{animation:none}
+}
+@media (min-width:1080px){
+  .para .num{position:absolute;right:calc(100% + 2.4rem);top:.5em;margin:0}
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     ★  EDIT THE BIRTHDAY MESSAGE HERE  ★
+     Blank line = new paragraph. Keep this block exactly as it is,
+     just change the words between the <script> tags below.
+     The paragraph containing the phrase in CONFIG.scarePhrase
+     (see the tiny script right below) becomes the jump-scare seal.
+═══════════════════════════════════════════════════════════════════ -->
+<script id="letterSource" type="text/plain">
+Guess whose birthday it is? It's your fucking birthday, Ruby. Happy birthday, girl.
+
+We honestly don't talk that much and we don't get to hang out that often either, but there's no way I could forget your birthday. I'm genuinely really lucky to have met you and to have a friend like you in my life.
+
+I just want you to know that you're an awesome person. You're cool, you're funny, you're pretty, and honestly, you're just you, which is what makes you great. Sometimes you're really intelligent, and sometimes you're an absolute dumbass, but that's part of your charm. You're basically a party bird who always wants to have a good time.
+
+Whatever comes your way, I hope life treats you well and gives you plenty of reasons to be happy. And when things get hard, remember that I'm here. You don't have to think twice about telling me if you need something. I'll be there for you.
+
+And yes, before you ask, I still want my fucking treat.
+
+You're doing better, and you're going to keep doing better. Hard times come and go, and I know you're strong enough to get through them. Just keep being yourself and don't lose that part of you.
+
+I'm really glad I got to meet you, and I hope we get to hang out properly soon. I'll see you when I've worked on myself and become a better version of me too.
+
+Happy birthday, Ruby. Stay beautiful, stay weird, and stay exactly who you are.
+
+STFU OTOSHI(A jump scare effect)
+</script>
+
+<script>
+/* ★ EDIT HERE TOO — the birthday girl's name, and the exact phrase
+   inside the message that should trigger the jump-scare seal. */
+const CONFIG = { name: "Ruby", scarePhrase: "STFU OTOSHI" };
+</script>
+
+<canvas id="fx" aria-hidden="true"></canvas>
+
+<div id="stage">
+
+  <!-- ══ HERO ══ -->
+  <header id="hero">
+    <svg id="blobs" viewBox="0 0 1000 800" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs>
+        <radialGradient id="bg1"><stop offset="0" stop-color="#f4d581" stop-opacity=".085"/><stop offset=".55" stop-color="#d9a441" stop-opacity=".04"/><stop offset="1" stop-color="#d9a441" stop-opacity="0"/></radialGradient>
+        <radialGradient id="bg2"><stop offset="0" stop-color="#3aa392" stop-opacity=".09"/><stop offset=".6" stop-color="#2e8f83" stop-opacity=".035"/><stop offset="1" stop-color="#2e8f83" stop-opacity="0"/></radialGradient>
+        <radialGradient id="bg3"><stop offset="0" stop-color="#d97b8f" stop-opacity=".07"/><stop offset=".6" stop-color="#d97b8f" stop-opacity=".03"/><stop offset="1" stop-color="#d97b8f" stop-opacity="0"/></radialGradient>
+      </defs>
+      <path id="blobA" fill="url(#bg1)"/>
+      <path id="blobB" fill="url(#bg2)"/>
+      <path id="blobC" fill="url(#bg3)"/>
+    </svg>
+    <div id="glow" aria-hidden="true"></div>
+
+    <div class="frame" aria-hidden="true">
+      <svg class="corner tl" viewBox="0 0 48 48" fill="none" stroke="currentColor" aria-hidden="true">
+        <g id="cornerOrn">
+          <path d="M2 46 V14 Q2 2 14 2 H46" stroke-width="1.5"/>
+          <path d="M8 46 V18 Q8 8 18 8 H46" stroke-width="1" opacity=".55"/>
+          <path d="M14 34 C14 24 24 14 34 14" stroke-width="1" opacity=".8"/>
+          <circle cx="24" cy="24" r="2" fill="currentColor" stroke="none"/>
+          <path d="M24 24 c-6 -1 -9 -6 -8 -12 c5 0 9 4 8 12 Z" fill="currentColor" stroke="none" opacity=".8"/>
+          <path d="M24 24 c1 -6 6 -9 12 -8 c0 5 -4 9 -12 8 Z" fill="currentColor" stroke="none" opacity=".8"/>
+        </g>
+      </svg>
+      <svg class="corner tr" viewBox="0 0 48 48" fill="none" stroke="currentColor" aria-hidden="true"><use href="#cornerOrn"/></svg>
+      <svg class="corner bl" viewBox="0 0 48 48" fill="none" stroke="currentColor" aria-hidden="true"><use href="#cornerOrn"/></svg>
+      <svg class="corner br" viewBox="0 0 48 48" fill="none" stroke="currentColor" aria-hidden="true"><use href="#cornerOrn"/></svg>
+    </div>
+
+    <div id="heroPar">
+      <p class="over hEnter" style="animation-delay:.25s">Guess whose birthday it is?</p>
+      <h1 class="display hEnter" id="bigName" style="animation-delay:.45s">Ruby</h1>
+      <div class="emblem hEnter" style="animation-delay:.85s">
+        <!-- The greeting lives on the banner below, inside the wreath's
+             own SVG coordinate space — always centered, always scaling. -->
+        <svg id="laurel" viewBox="0 0 300 204" aria-hidden="true">
+          <defs>
+            <linearGradient id="bandG" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#f6dc95"/>
+              <stop offset=".45" stop-color="#dcaa4d"/>
+              <stop offset="1" stop-color="#9a6a26"/>
+            </linearGradient>
+          </defs>
+          <!-- leaves & stems are generated here by the script -->
+          <g id="foliage"></g>
+          <!-- gilded swallowtail banner, tied across the wreath's base -->
+          <g class="banner">
+            <path d="M48 176 Q150 162 252 176 L242 186 L252 196 Q150 182 48 196 L58 186 Z"
+                  fill="url(#bandG)" stroke="#7a521d" stroke-width="1" stroke-linejoin="round"/>
+            <path d="M56 181 Q150 167 244 181" fill="none" stroke="rgba(58,32,8,.35)" stroke-width=".8"/>
+            <path id="rbArc" d="M60 190 Q150 176 240 190" fill="none"/>
+            <text class="rb-txt" font-size="11" letter-spacing="1.8" text-anchor="middle"><textPath href="#rbArc" xlink:href="#rbArc" startOffset="50%">HAPPY BIRTHDAY, GIRL</textPath></text>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <a class="cue hEnter" style="animation-delay:1.7s" href="#letter">
+      <i class="line"></i><span>Scroll</span>
+    </a>
+    <p class="skyHint hEnter" style="animation-delay:2s">— tap the sky —</p>
+  </header>
+
+  <!-- ══ THE LETTER ══ -->
+  <main id="letter">
+    <header class="letterHead reveal">
+      <p class="over">A letter, set down in ink &amp; gunpowder</p>
+      <h2>for <span class="it" id="who">Ruby</span></h2>
+      <div class="hr"></div>
+    </header>
+    <div id="letterBody"></div>
+  </main>
+
+  <!-- ══ AFTERMATH (revealed after the scare) ══ -->
+  <section id="aftermath" class="reveal" hidden>
+    <svg class="flourish" viewBox="0 0 240 26" fill="none" stroke="currentColor" aria-hidden="true">
+      <path d="M6 13 C 42 1 78 25 116 13" stroke-width="1.2"/>
+      <path d="M124 13 C 162 1 198 25 234 13" stroke-width="1.2"/>
+      <path d="M120 5 L126 13 L120 21 L114 13 Z" fill="currentColor" stroke="none"/>
+      <circle cx="104" cy="13" r="1.8" fill="currentColor" stroke="none"/>
+      <circle cx="136" cy="13" r="1.8" fill="currentColor" stroke="none"/>
+    </svg>
+    <p class="after-line">&hellip;Kidding. Mostly. <em>Happy birthday, <span id="who2">Ruby</span>.</em></p>
+    <p class="after-sub">You survived the seal. The skies, however, have not been warned.</p>
+    <div class="btns">
+      <button class="btn" id="againFx" type="button">Light the skies again</button>
+      <button class="btn ghost" id="againScare" type="button">once more, with feeling</button>
+    </div>
+  </section>
+
+  <footer>
+    <svg class="flourish" viewBox="0 0 240 26" fill="none" stroke="currentColor" aria-hidden="true">
+      <path d="M6 13 C 42 1 78 25 116 13" stroke-width="1.2"/>
+      <path d="M124 13 C 162 1 198 25 234 13" stroke-width="1.2"/>
+      <path d="M120 5 L126 13 L120 21 L114 13 Z" fill="currentColor" stroke="none"/>
+    </svg>
+    composed in ink &amp; gunpowder — for <span id="who3">Ruby</span>, on her birthday
+  </footer>
+</div>
+
+<div id="vignette" aria-hidden="true"></div>
+<div id="grain" aria-hidden="true"></div>
+
+<!-- ══ JUMP SCARE OVERLAY ══ -->
+<div id="scare" hidden aria-hidden="true">
+  <div class="flash"></div>
+  <div class="scare-inner">
+    <svg class="mask" viewBox="0 0 200 250">
+      <defs>
+        <filter id="warp" x="-25%" y="-25%" width="150%" height="150%">
+          <feTurbulence id="turb" type="fractalNoise" baseFrequency="0.011 0.026" numOctaves="2" seed="7" result="n"/>
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="14" xChannelSelector="R" yChannelSelector="G"/>
+        </filter>
+        <radialGradient id="face" cx="42%" cy="34%" r="78%">
+          <stop offset="0" stop-color="#efe3c8"/><stop offset=".62" stop-color="#cdbb95"/><stop offset="1" stop-color="#6d5b3c"/>
+        </radialGradient>
+      </defs>
+      <g filter="url(#warp)">
+        <path d="M100 14 C148 16 170 56 168 106 C166 158 140 206 100 232 C60 206 34 158 32 106 C30 56 52 16 100 14 Z" fill="url(#face)" stroke="#140b08" stroke-width="3"/>
+        <path d="M56 60 Q100 44 144 60" stroke="#241207" stroke-width="4" fill="none"/>
+        <ellipse cx="70" cy="92" rx="15" ry="23" transform="rotate(-16 70 92)" fill="#0d0705"/>
+        <ellipse cx="132" cy="92" rx="16" ry="24" transform="rotate(14 132 92)" fill="#0d0705"/>
+        <circle cx="72" cy="86" r="2.4" fill="#d0452f"/><circle cx="130" cy="88" r="2.4" fill="#d0452f"/>
+        <path d="M60 128 Q100 118 140 128" stroke="#241207" stroke-width="3" fill="none" opacity=".6"/>
+        <path d="M100 140 C126 138 142 154 140 176 C138 198 120 212 100 212 C80 212 62 198 60 176 C58 154 74 138 100 140 Z" fill="#0d0705"/>
+        <path d="M74 145 l7 13 7-12 7 13 7-12 7 13 7-12 6 12" stroke="#e8dcc2" stroke-width="2.4" fill="none" stroke-linejoin="round"/>
+        <path d="M40 120 q6 20 -2 38 M158 118 q-4 22 4 40" stroke="#8e2a1e" stroke-width="2.5" fill="none" opacity=".8"/>
+        <path d="M100 232 q-4 -10 0 -20" stroke="#241207" stroke-width="2" fill="none"/>
+      </g>
+    </svg>
+    <div class="scare-text"><span class="jitter" id="jitter">STFU OTOSHI</span></div>
+  </div>
+</div>
+
+<noscript><p style="position:fixed;inset:auto 0 0 0;padding:1rem;text-align:center;background:#1a1430;color:#efe4cd;z-index:200">This celebration needs JavaScript to light the skies.</p></noscript>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   ENGINE — everything runs locally, no dependencies.
+═══════════════════════════════════════════════════════════ */
+(() => {
+'use strict';
+const $  = s => document.querySelector(s);
+const NS = 'http://www.w3.org/2000/svg';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const MOBILE = matchMedia('(max-width: 640px)').matches;
+
+/* ---------- names into the page ---------- */
+const nameEl = $('#bigName');
+nameEl.textContent = CONFIG.name;
+nameEl.dataset.text = CONFIG.name;
+['who','who2','who3'].forEach(id => { const e = document.getElementById(id); if (e) e.textContent = CONFIG.name; });
+
+/* ---------- helpers ---------- */
+const rand = (a,b) => a + Math.random()*(b-a);
+function toRoman(n){ const m=[[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']]; let s=''; for(const [v,r] of m){ while(n>=v){s+=r;n-=v;} } return s; }
+function catmullClosed(p){
+  let d = `M${p[0][0].toFixed(1)} ${p[0][1].toFixed(1)}`;
+  const n = p.length;
+  for (let i=0;i<n;i++){
+    const p0=p[(i-1+n)%n], p1=p[i], p2=p[(i+1)%n], p3=p[(i+2)%n];
+    const c1=[p1[0]+(p2[0]-p0[0])/6, p1[1]+(p2[1]-p0[1])/6];
+    const c2=[p2[0]-(p3[0]-p1[0])/6, p2[1]-(p3[1]-p1[1])/6];
+    d += `C${c1[0].toFixed(1)} ${c1[1].toFixed(1)} ${c2[0].toFixed(1)} ${c2[1].toFixed(1)} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`;
+  }
+  return d + 'Z';
+}
+const FLOURISH = `<svg class="flourish" viewBox="0 0 240 26" fill="none" stroke="currentColor" aria-hidden="true">
+  <path d="M6 13 C 42 1 78 25 116 13" stroke-width="1.2"/>
+  <path d="M124 13 C 162 1 198 25 234 13" stroke-width="1.2"/>
+  <path d="M120 5 L126 13 L120 21 L114 13 Z" fill="currentColor" stroke="none"/>
+  <circle cx="104" cy="13" r="1.8" fill="currentColor" stroke="none"/>
+  <circle cx="136" cy="13" r="1.8" fill="currentColor" stroke="none"/></svg>`;
+
+/* ---------- laurel wreath (leaves grow one by one; the gold
+   banner with the greeting is static markup ABOVE the foliage,
+   so it always sits perfectly tied across the wreath's base) ---------- */
+(function buildLaurel(){
+  const svg = $('#laurel');
+  const foliage = document.getElementById('foliage');
+  const cx=150, cy=44, R=120, target={x:150,y:-10};
+  const mk=(tag,at)=>{const e=document.createElementNS(NS,tag);for(const k in at)e.setAttribute(k,at[k]);return e;};
+  let delay = 0.9;
+  for (const side of [1,-1]){
+    const a0=72*Math.PI/180, a1=172*Math.PI/180;
+    const P=t=>[cx+R*Math.sin(t)*side, cy-R*Math.cos(t)];
+    const s0=P(a0), s1=P(a1);
+    foliage.appendChild(mk('path',{d:`M${s0[0].toFixed(1)} ${s0[1].toFixed(1)} A${R} ${R} 0 0 ${side===1?1:0} ${s1[0].toFixed(1)} ${s1[1].toFixed(1)}`,
+      fill:'none',stroke:'currentColor','stroke-width':1.6,opacity:.75}));
+    const n=9;
+    for (let i=0;i<n;i++){
+      const th=(78 + i*(88/(n-1)))*Math.PI/180;
+      const s=0.6 + i*0.05;                       /* fuller at the base */
+      const x=cx+R*Math.sin(th)*side, y=cy-R*Math.cos(th);
+      const phi=Math.atan2(target.x-x, -(target.y-y))*180/Math.PI + side*16;
+      const leaf=mk('path',{d:'M0 2 C4.8 -2 6.6 -9.5 0 -17 C-6.6 -9.5 -4.8 -2 0 2 Z',fill:'currentColor','class':'leaf'});
+      leaf.setAttribute('transform',`translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${phi.toFixed(1)}) scale(${s.toFixed(2)})`);
+      leaf.style.animationDelay = (delay + i*0.07).toFixed(2)+'s';
+      foliage.appendChild(leaf);
+    }
+    delay += 0.04;
+  }
+  [[-8,0],[0,4],[8,-1]].forEach(([dx,dy],i)=>{
+    const b=mk('circle',{cx:150+dx,cy:161+dy,r:2.6,fill:'currentColor','class':'leaf'});
+    b.style.animationDelay=(1.55+i*.08)+'s'; foliage.appendChild(b);
+  });
+})();
+
+/* ---------- the letter ---------- */
+const raw = document.getElementById('letterSource').textContent.trim();
+const paras = raw.split(/\n\s*\n/).map(s=>s.trim()).filter(Boolean);
+const body = $('#letterBody');
+let n=0, hasSeal=false, sealBtn=null;
+
+function buildSeal(){
+  const w=document.createElement('div');
+  w.className='sealWrap reveal';
+  w.innerHTML = `
+    <p class="sealHint">One last thing, sealed in wax.<br>It is probably nothing. Break it anyway.</p>
+    <button id="seal" type="button" aria-label="Break the wax seal — contains a jump scare">
+      <svg viewBox="0 0 120 120">
+        <defs><radialGradient id="waxG" cx="38%" cy="32%" r="80%">
+          <stop offset="0" stop-color="#c4382b"/><stop offset=".55" stop-color="#8e1f16"/><stop offset="1" stop-color="#54100b"/>
+        </radialGradient></defs>
+        <path d="M60 5 C82 2 100 14 108 34 C116 54 114 78 100 94 C86 111 60 118 40 110 C20 102 8 82 8 60 C8 38 22 8 60 5 Z"
+              fill="url(#waxG)" stroke="#3d0b06" stroke-width="2"/>
+        <circle cx="60" cy="60" r="38" fill="none" stroke="rgba(244,213,129,.4)" stroke-width="1.5"/>
+        <circle cx="60" cy="60" r="33" fill="none" stroke="rgba(0,0,0,.28)" stroke-width="1"/>
+        <text x="60" y="76" text-anchor="middle" font-family="Georgia,serif" font-style="italic"
+              font-size="46" fill="#e9b959">${CONFIG.name.charAt(0).toUpperCase()}</text>
+        <ellipse cx="42" cy="30" rx="20" ry="10" fill="rgba(255,235,190,.14)" transform="rotate(-24 42 30)"/>
+      </svg>
+    </button>
+    <p class="sealWarn">— you have been warned —</p>`;
+  sealBtn = w.querySelector('#seal');
+  sealBtn.addEventListener('click', ()=>{
+    sealBtn.classList.add('broken');
+    triggerScare();
+  });
+  return w;
+}
+paras.forEach(txt=>{
+  if (txt.includes(CONFIG.scarePhrase)){ hasSeal=true; body.appendChild(buildSeal()); return; }
+  n++;
+  const isPull   = /fucking treat/i.test(txt);
+  const isClose  = /stay beautiful/i.test(txt);
+  if (isPull || isClose) body.insertAdjacentHTML('beforeend', FLOURISH);
+  const wrap=document.createElement('div');
+  wrap.className='para reveal'+(n===1?' first':'')+(isPull?' pull':'')+(isClose?' closing':'');
+  const num=document.createElement('span'); num.className='num'; num.textContent=toRoman(n);
+  const p=document.createElement('p'); p.textContent=txt;
+  wrap.append(num,p); body.appendChild(wrap);
+});
+if (!hasSeal) $('#aftermath').hidden = false;
+
+/* ---------- scroll reveals ---------- */
+const io=new IntersectionObserver(es=>es.forEach(e=>{
+  if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); }
+}),{threshold:.12});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+
+/* hero visibility → pause blobs, dim fireworks */
+let heroVisible=true;
+new IntersectionObserver(([e])=>{
+  heroVisible=e.isIntersecting;
+  document.body.classList.toggle('deep', !e.isIntersecting);
+},{threshold:.02}).observe($('#hero'));
+
+/* ---------- canvas: dust, rockets, sparks, confetti ---------- */
+const cv=$('#fx'), ctx=cv.getContext('2d');
+let W=0,H=0;
+function resize(){
+  const dpr=Math.min(devicePixelRatio||1,2);
+  W=innerWidth; H=innerHeight;
+  cv.width=W*dpr; cv.height=H*dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+resize(); addEventListener('resize',resize);
+
+const HUES=[44,50,18,168,340,215];
+const CONF=['#e9c26a','#f2e8d5','#d0452f','#2e8f83','#d97b8f','#3b5bab','#d9a441'];
+const sparks=[], rockets=[], confetti=[], dust=[];
+const MAXS = MOBILE?450:1100, MAXC = MOBILE?160:260;
+const RG = .085;                                  /* rocket gravity */
+
+for(let i=0;i<(MOBILE?26:52);i++) dust.push({
+  x:Math.random()*W, y:Math.random()*H, vx:rand(-.1,.1), vy:rand(-.26,-.06),
+  r:rand(.6,2.1), a:rand(.05,.2), ph:rand(0,7)});
+
+function launchTo(tx,ty){
+  const x0=tx+rand(-40,40);
+  const vy=-Math.sqrt(2*RG*Math.max(120,(H+10-ty)));
+  rockets.push({x:x0,y:H+8,vx:(tx-x0)/((-vy)/RG),vy,hue:HUES[(Math.random()*HUES.length)|0],trail:0});
+}
+function burst(x,y,power=1){
+  const hue=HUES[(Math.random()*HUES.length)|0];
+  const type=Math.random();
+  const nCount=((MOBILE?42:70)*power)|0;
+  for(let i=0;i<nCount;i++){
+    const a=Math.random()*Math.PI*2;
+    let sp,dec,g=.05,drag=.985,h=hue+rand(-7,7);
+    if(type<.55){ sp=Math.sqrt(Math.random())*5.4*power; dec=rand(.010,.016); }
+    else if(type<.8){ sp=3.6*power*rand(.85,1); dec=rand(.011,.016); }
+    else { sp=rand(.8,3); dec=.004; g=.075; drag=.993; h=46; }   /* gold willow */
+    sparks.push({x,y,px:x,py:y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,
+      life:1,decay:dec,g,drag,hue:h,sat:88,lig:rand(58,72),size:rand(1,2.7),tw:rand(0,7)});
+  }
+  if(sparks.length>MAXS) sparks.splice(0,sparks.length-MAXS);
+}
+function burstConfetti(x,y,nCount){
+  for(let i=0;i<nCount;i++){
+    const a=Math.random()*Math.PI*2, sp=rand(2,9);
+    confetti.push({x,y,vx:Math.cos(a)*sp*.8,vy:Math.sin(a)*sp-4,
+      w:rand(5,9),h:rand(8,14),rot:rand(0,7),vr:rand(-.15,.15),
+      ph:rand(0,7),phv:rand(.08,.22),life:1,decay:rand(.0035,.0075),
+      col:CONF[(Math.random()*CONF.length)|0]});
+  }
+  if(confetti.length>MAXC) confetti.splice(0,confetti.length-MAXC);
+}
+
+/* tap the sky → a rocket to your fingertip */
+ $('#hero').addEventListener('pointerdown',e=>{
+  if(e.target.closest('a,button')) return;
+  launchTo(e.clientX, Math.min(e.clientY, H*.8));
+});
+
+/* ---------- main loop ---------- */
+let last=performance.now(), raf=0, nextRocket=performance.now()+1600, blobT=0;
+const blobCfgs=[
+  {el:$('#blobA'),cx:500,cy:360,r:290,a:[.16,.10,.05],s:[.9,.7,1.4]},
+  {el:$('#blobB'),cx:210,cy:620,r:210,a:[.20,.12,.06],s:[.7,1.1,.9]},
+  {el:$('#blobC'),cx:800,cy:200,r:170,a:[.22,.14,.07],s:[1.1,.8,1.3]}];
+function drawBlob(c,t){
+  const N=28, pts=[];
+  for(let i=0;i<N;i++){
+    const a=i/N*2*Math.PI;
+    const r=c.r*(1+c.a[0]*Math.sin(3*a+t*c.s[0])+c.a[1]*Math.sin(5*a-t*c.s[1])+c.a[2]*Math.sin(8*a+t*c.s[2]));
+    pts.push([c.cx+r*Math.cos(a), c.cy+r*Math.sin(a)]);
+  }
+  c.el.setAttribute('d',catmullClosed(pts));
+}
+const heroPar=$('#heroPar');
+
+function frame(now){
+  raf=requestAnimationFrame(frame);
+  const f=Math.min((now-last)/16.7,2.5); last=now;
+  ctx.clearRect(0,0,W,H);
+
+  /* candlelight dust */
+  ctx.globalCompositeOperation='source-over';
+  for(const d of dust){
+    d.ph+=.01*f;
+    d.x+=d.vx*f+Math.sin(d.ph)*.08*f; d.y+=d.vy*f;
+    if(d.y<-8){d.y=H+8;d.x=Math.random()*W} if(d.x<-8)d.x=W+8; if(d.x>W+8)d.x=-8;
+    ctx.globalAlpha=d.a*(.6+.4*Math.sin(d.ph*3));
+    ctx.fillStyle='hsla(46,80%,72%,1)';
+    ctx.beginPath(); ctx.arc(d.x,d.y,d.r,0,7); ctx.fill();
+  }
+  ctx.globalAlpha=1;
+
+  /* auto rockets */
+  if(!RM && !document.hidden && now>nextRocket){
+    launchTo(rand(W*.15,W*.85), rand(H*.15,H*.5));
+    nextRocket=now+(MOBILE?2000:1100)+rand(0,1200);
+  }
+
+  /* rockets + sparks (additive light) */
+  ctx.globalCompositeOperation='lighter'; ctx.lineCap='round';
+  for(let i=rockets.length-1;i>=0;i--){
+    const r=rockets[i];
+    r.px=r.x; r.py=r.y;
+    r.vx*=.995; r.vy+=RG*f; r.x+=r.vx*f; r.y+=r.vy*f;
+    ctx.strokeStyle='hsla(46,90%,72%,.8)'; ctx.lineWidth=1.6;
+    ctx.beginPath(); ctx.moveTo(r.x-r.vx*2.2, r.y-r.vy*2.2); ctx.lineTo(r.x,r.y); ctx.stroke();
+    if(r.trail++%2===0) sparks.push({x:r.x,y:r.y,px:r.x,py:r.y,vx:rand(-.3,.3),vy:rand(-.1,.4),
+      life:.35,decay:.05,g:0,drag:1,hue:46,sat:90,lig:70,size:1,tw:0});
+    if(r.vy>=-1.4 || r.y<=H*.08){ burst(r.x,r.y,rand(.9,1.25)); rockets.splice(i,1); }
+  }
+  for(let i=sparks.length-1;i>=0;i--){
+    const s=sparks[i];
+    s.px=s.x; s.py=s.y;
+    s.vx*=s.drag; s.vy=s.vy*s.drag+s.g*f;
+    s.x+=s.vx*f; s.y+=s.vy*f; s.life-=s.decay*f;
+    if(s.life<=0){ sparks.splice(i,1); continue; }
+    const a=s.life<.45 ? s.life*(.55+.45*Math.sin(now*.03+s.tw*7)) : s.life;
+    ctx.strokeStyle=`hsla(${s.hue},${s.sat}%,${s.lig}%,${Math.max(0,a).toFixed(3)})`;
+    ctx.lineWidth=s.size;
+    ctx.beginPath(); ctx.moveTo(s.px,s.py); ctx.lineTo(s.x,s.y); ctx.stroke();
+  }
+
+  /* confetti (paper over light) */
+  ctx.globalCompositeOperation='source-over';
+  for(let i=confetti.length-1;i>=0;i--){
+    const c=confetti[i];
+    c.vy=Math.min(c.vy+.06*f,2.6); c.vx*=.99;
+    c.ph+=c.phv*f;
+    c.x+=c.vx*f+Math.sin(c.ph)*.4*f; c.y+=c.vy*f;
+    c.rot+=c.vr*f; c.life-=c.decay*f;
+    if(c.life<=0 || c.y>H+30){ confetti.splice(i,1); continue; }
+    ctx.save();
+    ctx.translate(c.x,c.y); ctx.rotate(c.rot); ctx.scale(1,Math.cos(c.ph*1.7));
+    ctx.globalAlpha=Math.min(1,c.life*2);
+    ctx.fillStyle=c.col; ctx.fillRect(-c.w/2,-c.h/2,c.w,c.h);
+    ctx.restore();
+  }
+  ctx.globalAlpha=1;
+
+  /* hero parallax + morphing drapery */
+  if(heroVisible){
+    if(!RM){
+      const sy=scrollY;
+      heroPar.style.transform=`translate3d(0,${(sy*.2).toFixed(1)}px,0)`;
+      heroPar.style.opacity=Math.max(0,1-sy/(H*.75)).toFixed(3);
+      blobT+=.012*f;
+      drawBlob(blobCfgs[0],blobT); drawBlob(blobCfgs[1],blobT*.8+13); drawBlob(blobCfgs[2],blobT*.6+40);
+    } else { drawBlob(blobCfgs[0],0); drawBlob(blobCfgs[1],13); drawBlob(blobCfgs[2],40); }
+  }
+}
+drawBlob(blobCfgs[0],0); drawBlob(blobCfgs[1],13); drawBlob(blobCfgs[2],40);
+raf=requestAnimationFrame(frame);
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden) cancelAnimationFrame(raf);
+  else { last=performance.now(); raf=requestAnimationFrame(frame); }
+});
+
+/* ---------- opening celebration ---------- */
+if(!RM){
+  setTimeout(()=>burstConfetti(W*.5,H*.36, MOBILE?70:110),450);
+  [650,1250,1950].forEach((d,i)=>setTimeout(()=>launchTo(W*(.25+i*.25),H*(.22+(i%2)*.14)),d));
+}
+
+/* ---------- title glitch: rare, deliberate ---------- */
+function glitchOnce(){
+  if(RM) return;
+  nameEl.classList.add('glitch');
+  setTimeout(()=>nameEl.classList.remove('glitch'),170+Math.random()*110);
+}
+nameEl.addEventListener('pointerenter',glitchOnce);
+(function schedule(){
+  setTimeout(()=>{ glitchOnce(); schedule(); }, 5000+Math.random()*5000);
+})();
+
+/* ---------- synthesized sound (no files, gesture-gated) ---------- */
+let AC=null;
+function ensureAC(){
+  if(!AC){ const C=window.AudioContext||window.webkitAudioContext; if(C) AC=new C(); }
+  if(AC && AC.state==='suspended') AC.resume();
+}
+function noiseBuf(dur){
+  const b=AC.createBuffer(1,AC.sampleRate*dur,AC.sampleRate), d=b.getChannelData(0);
+  for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+  return b;
+}
+function scream(){
+  if(!AC) return;
+  const t=AC.currentTime;
+  const comp=AC.createDynamicsCompressor(); comp.connect(AC.destination);
+  const master=AC.createGain(); master.gain.value=.9; master.connect(comp);
+  [1320,1760,2210].forEach((fr,i)=>{                 /* shriek */
+    const o=AC.createOscillator(); o.type='sawtooth';
+    o.frequency.setValueAtTime(fr*(1+i*.03),t);
+    o.frequency.exponentialRampToValueAtTime(140,t+.9);
+    const g=AC.createGain();
+    g.gain.setValueAtTime(.0001,t);
+    g.gain.exponentialRampToValueAtTime(.16,t+.02);
+    g.gain.exponentialRampToValueAtTime(.0001,t+.95);
+    o.connect(g).connect(master); o.start(t); o.stop(t+1);
+  });
+  const nz=AC.createBufferSource(); nz.buffer=noiseBuf(1.2);   /* blast */
+  const bp=AC.createBiquadFilter(); bp.type='bandpass'; bp.Q.value=.8;
+  bp.frequency.setValueAtTime(2400,t); bp.frequency.exponentialRampToValueAtTime(220,t+.9);
+  const ng=AC.createGain();
+  ng.gain.setValueAtTime(.0001,t);
+  ng.gain.exponentialRampToValueAtTime(.7,t+.015);
+  ng.gain.exponentialRampToValueAtTime(.0001,t+1.1);
+  nz.connect(bp).connect(ng).connect(master); nz.start(t);
+  const sub=AC.createOscillator(); sub.type='sine';            /* drop */
+  sub.frequency.setValueAtTime(120,t);
+  sub.frequency.exponentialRampToValueAtTime(30,t+.8);
+  const sg=AC.createGain();
+  sg.gain.setValueAtTime(.0001,t);
+  sg.gain.exponentialRampToValueAtTime(.6,t+.03);
+  sg.gain.exponentialRampToValueAtTime(.0001,t+.9);
+  sub.connect(sg).connect(master); sub.start(t); sub.stop(t+1);
+}
+function pop(when=0){
+  if(!AC) return;
+  const t=AC.currentTime+when;
+  const o=AC.createOscillator(); o.type='triangle';
+  o.frequency.setValueAtTime(rand(420,600),t);
+  o.frequency.exponentialRampToValueAtTime(90,t+.22);
+  const g=AC.createGain();
+  g.gain.setValueAtTime(.0001,t);
+  g.gain.exponentialRampToValueAtTime(.16,t+.012);
+  g.gain.exponentialRampToValueAtTime(.0001,t+.25);
+  o.connect(g).connect(AC.destination); o.start(t); o.stop(t+.3);
+  const nz=AC.createBufferSource(); nz.buffer=noiseBuf(.15);
+  const hp=AC.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=1800;
+  const ng=AC.createGain();
+  ng.gain.setValueAtTime(.1,t);
+  ng.gain.exponentialRampToValueAtTime(.0001,t+.14);
+  nz.connect(hp).connect(ng).connect(AC.destination); nz.start(t);
+}
+
+/* ---------- the jump scare ---------- */
+let scaring=false, aftermathShown=$('#aftermath').hidden===false;
+function glitchLoop(el,dur){
+  const t0=performance.now();
+  return setInterval(()=>{
+    if(performance.now()-t0>dur){ el.style.cssText=''; return; }
+    el.style.clipPath=`inset(${(Math.random()*38)|0}% 0 ${(Math.random()*38)|0}% 0)`;
+    el.style.transform=`translate(${((Math.random()*12)-6)|0}px,${((Math.random()*10)-5)|0}px)`;
+    el.classList.toggle('alt');
+  },55);
+}
+function triggerScare(){
+  if(scaring) return; scaring=true;
+  ensureAC(); scream();
+  const scare=$('#scare'), turb=$('#turb'), jit=$('#jitter');
+  scare.hidden=false; void scare.offsetWidth;
+  scare.classList.add('go');
+  if(!RM) document.body.classList.add('shake');
+  const gIv = RM?null:glitchLoop(jit,1400);
+  const sIv = RM?null:setInterval(()=>turb.setAttribute('seed',(Math.random()*100)|0),70);
+  setTimeout(()=>{
+    clearInterval(gIv); clearInterval(sIv); jit.style.cssText='';
+    scare.classList.add('out');
+    document.body.classList.remove('shake');
+    /* the wax seal shatters into the sky */
+    const r = sealBtn ? sealBtn.getBoundingClientRect() : {left:W/2,top:H/2,width:0,height:0};
+    burst(r.left+r.width/2, r.top+r.height/2, 1.4);
+    burstConfetti(W/2, H*.42, MOBILE?80:140);
+    cv.classList.add('front');
+    setTimeout(()=>{ scare.hidden=true; scare.classList.remove('go','out'); scaring=false; },480);
+    setTimeout(()=>{ cv.classList.remove('front'); },3200);
+    setTimeout(()=>{
+      if(!aftermathShown){ aftermathShown=true; $('#aftermath').hidden=false; }
+    },1750);
+  },1500);
+}
+ $('#againScare').addEventListener('click',triggerScare);
+ $('#againFx').addEventListener('click',()=>{
+  ensureAC();
+  for(let i=0;i<(MOBILE?3:6);i++)
+    setTimeout(()=>{ launchTo(rand(W*.12,W*.88), rand(H*.12,H*.45)); pop(Math.random()*.1); }, i*(MOBILE?260:170));
+  setTimeout(()=>burstConfetti(W/2,H*.3, MOBILE?60:110),500);
+  cv.classList.add('front'); setTimeout(()=>cv.classList.remove('front'),3200);
+});
+})();
+</script>
+</body>
+</html>
